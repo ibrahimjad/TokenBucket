@@ -4,17 +4,11 @@ classdef TokenBucket < handle
         M {mustBeNumeric}
         L {mustBeNumeric}
         Q {mustBeNumeric}
-        Tau {mustBeNumeric}
-    end
-    events
-        Serve
-    end
-    properties (SetAccess = private)
-      tm timer;
+        Fcn
     end
     methods
-        function bucket = TokenBucket(Tn, M, L, Q, Tau, start_now)
-            if nargin ~= 6
+        function bucket = TokenBucket(Tn, M, L, Q, Fcn)
+            if nargin ~= 5
                 disp('Missing argument')
                 return
             end
@@ -22,36 +16,23 @@ classdef TokenBucket < handle
             bucket.M = M;
             bucket.L = L;
             bucket.Q = Q;
-            bucket.Tau = Tau;
-            bucket.tm = timer('ExecutionMode', 'fixedRate', 'Period', bucket.Tau);
-            bucket.tm.TimerFcn = {@bucket.ReplinishToken, bucket};
-            bucket.tm.StartDelay = ~start_now * bucket.Tau;
-            start(bucket.tm);
-        end
-        function delete(bucket)
-            stop(bucket.tm);
-            delete(bucket.tm);
+            bucket.Fcn = Fcn;
         end
         function Arrive(bucket)
             if (bucket.Tn > 0)
                 bucket.Tn = bucket.Tn - 1;
-                bucket.ServeTokenEvent();
+                bucket.Fcn();
             elseif (bucket.Tn == 0 && bucket.Q < bucket.L)
                 bucket.Q = bucket.Q + 1;
             end
         end
-    end
-    methods (Access = private)
-        function ReplinishToken(bucket, varargin)
+        function ReplinishToken(bucket)
             if (bucket.Q > 0)
                 bucket.Q = bucket.Q -1;
-                bucket.ServeTokenEvent();
+                bucket.Fcn();
             elseif (bucket.Q == 0 && bucket.Tn < bucket.M)
                 bucket.Tn = bucket.Tn + 1;
             end
-        end
-        function ServeTokenEvent(bucket)
-            notify(bucket,'Serve');
         end
     end
 end
